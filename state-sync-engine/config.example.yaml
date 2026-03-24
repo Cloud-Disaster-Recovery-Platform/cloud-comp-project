@@ -1,0 +1,48 @@
+# State Sync Engine Configuration
+
+# Local database connection (source)
+local_database:
+  host: localhost
+  port: 5432
+  database: myapp
+  user: replicator
+  password: ${LOCAL_DB_PASSWORD}  # Override with env var
+  ssl_mode: require
+  replication_slot: failsafe_slot
+
+# Cloud database connection (target)
+cloud_database:
+  host: 10.0.0.3  # Cloud SQL private IP
+  port: 5432
+  database: myapp
+  user: replicator
+  password: ${CLOUD_DB_PASSWORD}  # Override with env var
+  ssl_mode: require
+
+# Replication settings
+replication:
+  tables:
+    - public.users
+    - public.orders
+    - public.sessions
+  batch_size: 100
+  flush_interval: 1s
+  max_lag_seconds: 30
+
+# Distributed lock configuration
+distributed_lock:
+  gcs_bucket: failsafe-locks
+  lock_key: active-writer
+  ttl: 30s
+  renew_interval: 10s
+
+# Health and status endpoints
+health:
+  status_port: 8080
+  metrics_port: 9090
+  check_interval: 10s
+
+# Failover settings
+failover:
+  timeout: 60s
+  consecutive_failures: 3
