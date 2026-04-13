@@ -62,14 +62,14 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - _Requirements: 3.2, 3.3, 3.4, 8.1, 8.2_
 
 - [ ] 4. Cloud database replication publisher
-  - [ ] 4.1 Implement ReplicationPublisher interface
+  - [x] 4.1 Implement ReplicationPublisher interface
     - Implement Publish() to batch-insert changes to cloud database
     - Use pgx connection pool for cloud database
     - Execute INSERT/UPDATE/DELETE statements based on ChangeEvent.Operation
     - Handle transaction batching per configuration batch_size
     - _Requirements: 3.5, 8.1, 8.2, 8.3, 8.4_
   
-  - [ ] 4.2 Implement HealthCheck() for cloud connectivity
+  - [x] 4.2 Implement HealthCheck() for cloud connectivity
     - Execute simple SELECT 1 query to verify connection
     - Return error if cloud database unreachable
     - _Requirements: 3.5, 14.1_
