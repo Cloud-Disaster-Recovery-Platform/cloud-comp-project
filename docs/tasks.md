@@ -134,35 +134,35 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Test state query accuracy
     - _Requirements: 6.2, 6.3_
 
-- [ ] 8. Replication state persistence
-  - [ ] 8.1 Implement ReplicationState struct serialization
+- [x] 8. Replication state persistence
+  - [x] 8.1 Implement ReplicationState struct serialization
     - Marshal ReplicationState to JSON format
     - Write to /var/lib/state-sync/replication.state file
     - Create directory if it doesn't exist
     - _Requirements: 12.6, 14.6_
-  
-  - [ ] 8.2 Implement state loading on startup
+
+  - [x] 8.2 Implement state loading on startup
     - Read replication.state file if exists
     - Unmarshal JSON to ReplicationState struct
     - Resume replication from last LSN
     - _Requirements: 12.6, 14.6_
-  
+
   - [ ]* 8.3 Write unit tests for state persistence
     - Test state save and load cycle
     - Test handling of missing state file (fresh start)
     - Test LSN resume after restart
     - _Requirements: 12.6, 14.6_
 
-- [ ] 9. Main replication engine orchestration
-  - [ ] 9.1 Implement main replication loop
+- [x] 9. Main replication engine orchestration
+  - [x] 9.1 Implement main replication loop
     - Subscribe to local database change events
     - Queue events in memory buffer (configurable size)
     - Flush batches to cloud database per flush_interval or batch_size
     - Acknowledge LSN after successful flush
     - Track replication lag by comparing event timestamp to current time
     - _Requirements: 3.3, 3.4, 3.5, 3.6, 3.7, 9.1, 9.2_
-  
-  - [ ] 9.2 Implement graceful shutdown handler
+
+  - [x] 9.2 Implement graceful shutdown handler
     - Listen for SIGTERM and SIGINT signals
     - Stop consuming new change events
     - Flush all queued events to cloud database
@@ -170,7 +170,7 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Close all database connections
     - Complete shutdown within 30 seconds or log warning
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
-  
+
   - [ ]* 9.3 Write integration tests for replication engine
     - Test end-to-end replication of INSERT/UPDATE/DELETE
     - Test graceful shutdown with in-flight events
