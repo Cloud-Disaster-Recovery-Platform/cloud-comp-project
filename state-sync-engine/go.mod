@@ -1,6 +1,6 @@
 module github.com/cloud-mirror/state-sync-engine
 
-go 1.25.4
+go 1.20
 
 require (
 	cel.dev/expr v0.25.1 // indirect
