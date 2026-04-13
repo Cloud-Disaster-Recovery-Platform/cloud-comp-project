@@ -80,30 +80,30 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Test health check connectivity validation
     - _Requirements: 3.5, 8.1, 8.2_
 
-- [ ] 5. Distributed lock implementation using GCS
-  - [ ] 5.1 Implement DistributedLock interface with GCS backend
+- [x] 5. Distributed lock implementation using GCS
+  - [x] 5.1 Implement DistributedLock interface with GCS backend
     - Implement Acquire() using GCS object creation with DoesNotExist precondition
     - Store lock metadata: holder, acquired timestamp, expiration time
     - Return false if lock already held by another node
     - _Requirements: 6.1_
-  
-  - [ ] 5.2 Implement Renew() for lock lease extension
+
+  - [x] 5.2 Implement Renew() for lock lease extension
     - Update GCS object metadata with new expiration time
     - Verify current holder matches before renewal
     - Return error if not lock holder
     - _Requirements: 6.1_
-  
-  - [ ] 5.3 Implement Release() to give up lock
+
+  - [x] 5.3 Implement Release() to give up lock
     - Delete GCS object to release lock
     - Handle case where lock already expired
     - _Requirements: 6.1_
-  
-  - [ ] 5.4 Implement GetHolder() to query current lock owner
+
+  - [x] 5.4 Implement GetHolder() to query current lock owner
     - Read GCS object metadata
     - Return holder identifier and expiration time
     - _Requirements: 6.1_
-  
-  - [ ]* 5.5 Write unit tests for distributed lock
+
+  - [x]* 5.5 Write unit tests for distributed lock
     - Test acquire/renew/release cycle
     - Test concurrent acquisition attempts
     - Test lock expiration and TTL handling
