@@ -55,7 +55,7 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Close database connection properly
     - _Requirements: 12.4_
   
-  - [ ]* 3.5 Write unit tests for replication subscriber
+  - [x]* 3.5 Write unit tests for replication subscriber
     - Test connection establishment, slot creation
     - Test message parsing for INSERT/UPDATE/DELETE operations
     - Test LSN acknowledgment and tracking
