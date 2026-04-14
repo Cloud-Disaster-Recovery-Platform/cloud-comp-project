@@ -37,3 +37,18 @@ output "lock_bucket_url" {
   description = "Distributed lock bucket URL."
   value       = module.storage.bucket_url
 }
+
+output "replication_lag_alert_policy_id" {
+  description = "Cloud Monitoring alert policy ID for replication lag threshold."
+  value       = google_monitoring_alert_policy.replication_lag.id
+}
+
+output "failover_events_alert_policy_id" {
+  description = "Cloud Monitoring alert policy ID for failover event detection."
+  value       = google_monitoring_alert_policy.failover_events.id
+}
+
+output "monitoring_notification_channel_ids" {
+  description = "Notification channels attached to monitoring alert policies."
+  value       = local.monitoring_notification_channel_ids
+}

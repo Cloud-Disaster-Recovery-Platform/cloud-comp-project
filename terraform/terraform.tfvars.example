@@ -17,3 +17,7 @@ backup_app_ip                = "203.0.113.20"
 lock_bucket_name             = "cloud-mirror-locks-prod"
 lock_bucket_storage_class    = "STANDARD"
 lock_bucket_force_destroy    = false
+
+replication_lag_alert_threshold_seconds = 30
+monitoring_notification_channel_ids      = []
+monitoring_notification_email            = "alerts@example.com"

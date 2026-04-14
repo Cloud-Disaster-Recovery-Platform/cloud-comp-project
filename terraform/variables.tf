@@ -78,3 +78,21 @@ variable "lock_bucket_force_destroy" {
   type        = bool
   default     = false
 }
+
+variable "replication_lag_alert_threshold_seconds" {
+  description = "Replication lag threshold in seconds used by Cloud Monitoring alert policy."
+  type        = number
+  default     = 30
+}
+
+variable "monitoring_notification_channel_ids" {
+  description = "Existing Cloud Monitoring notification channel IDs used for alert policies."
+  type        = list(string)
+  default     = []
+}
+
+variable "monitoring_notification_email" {
+  description = "Optional email address to create and use as a Cloud Monitoring notification channel."
+  type        = string
+  default     = ""
+}
