@@ -27,13 +27,14 @@ Failover        FailoverConfig    `mapstructure:"failover"`
 
 // DatabaseConfig holds database connection parameters.
 type DatabaseConfig struct {
-Host            string `mapstructure:"host"`
-Port            int    `mapstructure:"port"`
-Database        string `mapstructure:"database"`
-User            string `mapstructure:"user"`
-Password        string `mapstructure:"password"`
-SSLMode         string `mapstructure:"ssl_mode"`
-ReplicationSlot string `mapstructure:"replication_slot"` // Only for local database.
+	Host            string `mapstructure:"host"`
+	Port            int    `mapstructure:"port"`
+	Database        string `mapstructure:"database"`
+	User            string `mapstructure:"user"`
+	Password        string `mapstructure:"password"`
+	SSLMode         string `mapstructure:"ssl_mode"`
+	SSLRootCertPath string `mapstructure:"ssl_root_cert_path"`
+	ReplicationSlot string `mapstructure:"replication_slot"` // Only for local database.
 }
 
 // ReplicationConfig holds replication behavior parameters.
@@ -131,8 +132,16 @@ errs = append(errs, fmt.Sprintf("%s.replication_slot is required", prefix))
 }
 }
 
-validateDatabase("local_database", c.LocalDatabase, true)
-validateDatabase("cloud_database", c.CloudDatabase, false)
+	validateDatabase("local_database", c.LocalDatabase, true)
+	validateDatabase("cloud_database", c.CloudDatabase, false)
+	if strings.TrimSpace(c.CloudDatabase.SSLMode) != "require" &&
+		strings.TrimSpace(c.CloudDatabase.SSLMode) != "verify-ca" &&
+		strings.TrimSpace(c.CloudDatabase.SSLMode) != "verify-full" {
+		errs = append(errs, "cloud_database.ssl_mode must be one of: require, verify-ca, verify-full")
+	}
+	if strings.TrimSpace(c.CloudDatabase.SSLRootCertPath) == "" {
+		errs = append(errs, "cloud_database.ssl_root_cert_path is required for TLS certificate validation")
+	}
 
 if len(c.Replication.Tables) == 0 {
 errs = append(errs, "replication.tables must include at least one table")

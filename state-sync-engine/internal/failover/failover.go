@@ -251,6 +251,7 @@ func toDBConfig(db config.DatabaseConfig) interfaces.DBConfig {
 		User:            db.User,
 		Password:        db.Password,
 		SSLMode:         db.SSLMode,
+		SSLRootCertPath: db.SSLRootCertPath,
 		ReplicationSlot: db.ReplicationSlot,
 	}
 }

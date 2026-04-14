@@ -47,6 +47,7 @@ module "compute" {
   database_url        = local.database_url
   network_name        = module.network.network_name
   subnet_name         = module.network.subnet_name
+  service_account_email = google_service_account.cloud_run.email
 }
 
 module "dns" {
@@ -65,4 +66,32 @@ module "storage" {
   location      = var.region
   storage_class = var.lock_bucket_storage_class
   force_destroy = var.lock_bucket_force_destroy
+}
+
+resource "google_service_account" "state_sync_engine" {
+  account_id   = "${replace(var.project_name, "_", "-")}-state-sync"
+  display_name = "State Sync Engine Service Account"
+}
+
+resource "google_project_iam_member" "state_sync_cloud_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.state_sync_engine.email}"
+}
+
+resource "google_project_iam_member" "state_sync_storage_object_admin" {
+  project = var.project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.state_sync_engine.email}"
+}
+
+resource "google_service_account" "cloud_run" {
+  account_id   = "${replace(var.project_name, "_", "-")}-cloud-run"
+  display_name = "Cloud Run Backup Service Account"
+}
+
+resource "google_project_iam_member" "cloud_run_cloud_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }

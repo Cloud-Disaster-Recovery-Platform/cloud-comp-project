@@ -388,20 +388,20 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Explain alert policies and notification configuration
     - _Requirements: 11.6_
 
-- [ ] 20. Security hardening
-  - [ ] 20.1 Implement TLS for cloud database connections
+- [x] 20. Security hardening
+  - [x] 20.1 Implement TLS for cloud database connections
     - Configure pgx connection with sslmode=require
     - Validate TLS certificates for cloud connections
     - _Requirements: 13.1, 13.5_
   
-  - [ ] 20.2 Configure IAM roles in Terraform
+  - [x] 20.2 Configure IAM roles in Terraform
     - Create service account for State Sync Engine
     - Grant minimal permissions: Cloud SQL Client, Storage Object Admin (for locks)
     - Create service account for Cloud Run
     - Grant minimal permissions: Cloud SQL Client
     - _Requirements: 13.6_
   
-  - [ ] 20.3 Document credential management
+  - [x] 20.3 Document credential management
     - Document using environment variables for database passwords
     - Provide examples for GCP Secret Manager integration
     - Document Cloudflare Tunnel authentication

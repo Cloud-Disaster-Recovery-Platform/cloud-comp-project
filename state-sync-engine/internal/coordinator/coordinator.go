@@ -161,6 +161,9 @@ func buildConnString(config interfaces.DBConfig) string {
 	if strings.TrimSpace(config.SSLMode) != "" {
 		query.Set("sslmode", config.SSLMode)
 	}
+	if strings.TrimSpace(config.SSLRootCertPath) != "" {
+		query.Set("sslrootcert", config.SSLRootCertPath)
+	}
 	connURL.RawQuery = query.Encode()
 
 	return connURL.String()

@@ -21,12 +21,13 @@ func validConfig() Config {
 			ReplicationSlot: "failsafe_slot",
 		},
 		CloudDatabase: DatabaseConfig{
-			Host:     "10.0.0.3",
-			Port:     5432,
-			Database: "myapp",
-			User:     "replicator",
-			Password: "cloudpass",
-			SSLMode:  "require",
+			Host:            "10.0.0.3",
+			Port:            5432,
+			Database:        "myapp",
+			User:            "replicator",
+			Password:        "cloudpass",
+			SSLMode:         "require",
+			SSLRootCertPath: "/etc/ssl/certs/cloudsql-ca.pem",
 		},
 		Replication: ReplicationConfig{
 			Tables:        []string{"public.users"},
@@ -149,6 +150,26 @@ func TestValidate_MissingCloudDatabasePassword(t *testing.T) {
 	assertContains(t, err.Error(), "cloud_database.password is required")
 }
 
+func TestValidate_InvalidCloudDatabaseSSLMode(t *testing.T) {
+	cfg := validConfig()
+	cfg.CloudDatabase.SSLMode = "disable"
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for invalid cloud_database.ssl_mode")
+	}
+	assertContains(t, err.Error(), "cloud_database.ssl_mode must be one of: require, verify-ca, verify-full")
+}
+
+func TestValidate_MissingCloudDatabaseSSLRootCertPath(t *testing.T) {
+	cfg := validConfig()
+	cfg.CloudDatabase.SSLRootCertPath = ""
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for missing cloud_database.ssl_root_cert_path")
+	}
+	assertContains(t, err.Error(), "cloud_database.ssl_root_cert_path is required for TLS certificate validation")
+}
+
 func TestValidate_CloudDatabaseDoesNotRequireReplicationSlot(t *testing.T) {
 	cfg := validConfig()
 	cfg.CloudDatabase.ReplicationSlot = "" // should be fine
@@ -210,6 +231,7 @@ cloud_database:
   user: clouduser
   password: cloudpass
   ssl_mode: require
+  ssl_root_cert_path: /etc/ssl/certs/cloudsql-ca.pem
 
 replication:
   tables:
@@ -293,6 +315,7 @@ cloud_database:
   user: replicator
   password: cloudfilepass
   ssl_mode: require
+  ssl_root_cert_path: /etc/ssl/certs/cloudsql-ca.pem
 
 replication:
   tables:
@@ -389,7 +412,8 @@ func TestLoad_FromJSONFile(t *testing.T) {
     "database": "jsondb",
     "user": "clouduser",
     "password": "cloudpass",
-    "ssl_mode": "require"
+    "ssl_mode": "require",
+    "ssl_root_cert_path": "/etc/ssl/certs/cloudsql-ca.pem"
   },
   "replication": {
     "tables": ["public.items"],

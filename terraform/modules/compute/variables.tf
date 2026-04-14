@@ -28,3 +28,8 @@ variable "subnet_name" {
   description = "Subnet name used for Cloud Run VPC access."
   type        = string
 }
+
+variable "service_account_email" {
+  description = "Service account email for Cloud Run runtime identity."
+  type        = string
+}

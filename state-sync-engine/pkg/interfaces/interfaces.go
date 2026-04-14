@@ -88,11 +88,12 @@ const (
 
 // DBConfig holds database connection configuration
 type DBConfig struct {
-	Host           string
-	Port           int
-	Database       string
-	User           string
-	Password       string
-	SSLMode        string
+	Host            string
+	Port            int
+	Database        string
+	User            string
+	Password        string
+	SSLMode         string
+	SSLRootCertPath string // Optional CA bundle path for TLS certificate verification
 	ReplicationSlot string // Optional, only used for local database
 }

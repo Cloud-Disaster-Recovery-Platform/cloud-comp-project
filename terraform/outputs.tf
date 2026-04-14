@@ -52,3 +52,13 @@ output "monitoring_notification_channel_ids" {
   description = "Notification channels attached to monitoring alert policies."
   value       = local.monitoring_notification_channel_ids
 }
+
+output "state_sync_service_account_email" {
+  description = "Service account email for the State Sync Engine."
+  value       = google_service_account.state_sync_engine.email
+}
+
+output "cloud_run_service_account_email" {
+  description = "Service account email used by Cloud Run backup service."
+  value       = google_service_account.cloud_run.email
+}

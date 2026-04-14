@@ -479,6 +479,9 @@ func buildConnString(config interfaces.DBConfig, replicationMode bool) string {
 	if strings.TrimSpace(config.SSLMode) != "" {
 		query.Set("sslmode", config.SSLMode)
 	}
+	if strings.TrimSpace(config.SSLRootCertPath) != "" {
+		query.Set("sslrootcert", config.SSLRootCertPath)
+	}
 	if replicationMode {
 		query.Set("replication", "database")
 	}

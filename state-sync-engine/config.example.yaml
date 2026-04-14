@@ -18,6 +18,7 @@ cloud_database:
   user: replicator
   password: ${CLOUD_DB_PASSWORD}  # Override with env var
   ssl_mode: require
+  ssl_root_cert_path: /etc/ssl/certs/cloudsql-ca.pem
 
 # Replication settings
 replication:
