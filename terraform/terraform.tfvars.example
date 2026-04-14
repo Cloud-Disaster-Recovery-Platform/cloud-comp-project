@@ -1,0 +1,19 @@
+project_id                   = "my-gcp-project-id"
+project_name                 = "cloud-mirror"
+region                       = "us-central1"
+
+database_name                = "myapp"
+replicator_password          = "replace-with-secure-password"
+backup_start_time            = "03:00"
+database_tier                = "db-f1-micro"
+database_deletion_protection = true
+
+app_container_image          = "gcr.io/my-gcp-project-id/myapp:latest"
+
+domain                       = "example.com"
+local_app_ip                 = "203.0.113.10"
+backup_app_ip                = "203.0.113.20"
+
+lock_bucket_name             = "cloud-mirror-locks-prod"
+lock_bucket_storage_class    = "STANDARD"
+lock_bucket_force_destroy    = false

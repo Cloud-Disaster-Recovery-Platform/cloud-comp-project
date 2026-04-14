@@ -282,15 +282,15 @@ This implementation plan creates a headless failsafe infrastructure that provide
 - [x] 16. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 17. Terraform modules for GCP infrastructure
-  - [ ] 17.1 Create network module
+- [x] 17. Terraform modules for GCP infrastructure
+  - [x] 17.1 Create network module
     - Define google_compute_network resource for VPC
     - Define google_compute_subnetwork with 10.0.0.0/24 CIDR
     - Create variables.tf for project_name, region
     - Create outputs.tf for network ID and subnet ID
     - _Requirements: 4.2_
   
-  - [ ] 17.2 Create database module
+  - [x] 17.2 Create database module
     - Define google_sql_database_instance with POSTGRES_15
     - Configure private IP in VPC (no public IP)
     - Define google_sql_database for application database
@@ -300,7 +300,7 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Create outputs.tf for private_ip_address, connection_name
     - _Requirements: 4.3, 8.1, 8.2, 8.3, 8.4_
   
-  - [ ] 17.3 Create compute module for Cloud Run
+  - [x] 17.3 Create compute module for Cloud Run
     - Define google_cloud_run_v2_service resource
     - Configure scaling: min_instances=0, max_instances=10
     - Configure container with app_container_image variable
@@ -311,7 +311,7 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Create outputs.tf for service_uri
     - _Requirements: 4.4, 4.6, 4.7_
   
-  - [ ] 17.4 Create DNS module for health checks and failover
+  - [x] 17.4 Create DNS module for health checks and failover
     - Define google_dns_managed_zone resource
     - Define google_dns_record_set with routing_policy for weighted routing
     - Configure primary route to local application (weight 1.0)
@@ -323,7 +323,7 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Create outputs.tf for nameservers
     - _Requirements: 4.5, 5.1, 5.2, 5.3, 5.4, 5.8_
   
-  - [ ] 17.5 Create storage module for distributed locks
+  - [x] 17.5 Create storage module for distributed locks
     - Define google_storage_bucket for lock storage
     - Configure bucket location and storage class
     - Set uniform bucket-level access
@@ -331,7 +331,7 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Create outputs.tf for bucket_name, bucket_url
     - _Requirements: 6.1_
   
-  - [ ] 17.6 Create root module composition
+  - [x] 17.6 Create root module composition
     - Create main.tf that instantiates all modules
     - Wire module outputs to inputs (e.g., network ID to database module)
     - Create variables.tf for all required inputs
