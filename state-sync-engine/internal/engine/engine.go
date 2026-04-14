@@ -3,14 +3,17 @@ package engine
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/cloud-mirror/state-sync-engine/internal/config"
+	"github.com/cloud-mirror/state-sync-engine/internal/metrics"
+	"github.com/cloud-mirror/state-sync-engine/internal/retry"
 	"github.com/cloud-mirror/state-sync-engine/internal/state"
 	"github.com/cloud-mirror/state-sync-engine/pkg/interfaces"
 )
@@ -30,12 +33,17 @@ type Engine struct {
 	subscriber interfaces.ReplicationSubscriber
 	publisher  interfaces.ReplicationPublisher
 	stateStore *state.Store
+	logger     *zap.Logger
+	metrics    *metrics.Metrics
 
 	mu    sync.Mutex
 	state *state.ReplicationState
 
 	// buffer holds queued events waiting to be flushed.
 	buffer []interfaces.ChangeEvent
+
+	// cloudBreaker tracks consecutive publish failures to the cloud database.
+	cloudBreaker *retry.CircuitBreaker
 }
 
 // New creates an Engine with the provided dependencies.
@@ -44,12 +52,20 @@ func New(
 	subscriber interfaces.ReplicationSubscriber,
 	publisher interfaces.ReplicationPublisher,
 	stateStore *state.Store,
+	logger *zap.Logger,
+	m *metrics.Metrics,
 ) *Engine {
 	return &Engine{
 		cfg:        cfg,
 		subscriber: subscriber,
 		publisher:  publisher,
 		stateStore: stateStore,
+		logger:     logger,
+		metrics:    m,
+		cloudBreaker: retry.NewCircuitBreaker(retry.CircuitBreakerConfig{
+			FailureThreshold: 5,
+			RetryInterval:    5 * time.Minute,
+		}),
 	}
 }
 
@@ -71,12 +87,24 @@ func (e *Engine) Run(ctx context.Context) error {
 	e.buffer = make([]interfaces.ChangeEvent, 0, e.cfg.Replication.BatchSize)
 	e.mu.Unlock()
 
-	log.Printf("replication state loaded: last_lsn=%d events_processed=%d",
-		rs.LastLSN, rs.EventsProcessed)
+	e.logger.Info("replication state loaded",
+		zap.Uint64("last_lsn", uint64(rs.LastLSN)),
+		zap.Int64("events_processed", rs.EventsProcessed),
+	)
 
-	// Step 2: Connect subscriber.
+	// Step 2: Connect subscriber with exponential backoff.
 	localDB := toDBConfig(e.cfg.LocalDatabase)
-	if err := e.subscriber.Connect(ctx, localDB); err != nil {
+	backoff := retry.DefaultBackoff()
+	err = retry.Do(ctx, backoff, 0, func(attempt int, retryErr error, nextDelay time.Duration) {
+		e.logger.Warn("subscriber connection failed, retrying",
+			zap.Int("attempt", attempt+1),
+			zap.Error(retryErr),
+			zap.Duration("next_delay", nextDelay),
+		)
+	}, func(retryCtx context.Context) error {
+		return e.subscriber.Connect(retryCtx, localDB)
+	})
+	if err != nil {
 		return fmt.Errorf("connecting subscriber: %w", err)
 	}
 
@@ -116,7 +144,7 @@ func (e *Engine) loop(ctx context.Context, eventCh <-chan interfaces.ChangeEvent
 		case event, ok := <-eventCh:
 			if !ok {
 				// Channel closed (subscriber stopped). Flush and exit.
-				log.Println("event channel closed, flushing remaining events")
+				e.logger.Info("event channel closed, flushing remaining events")
 				return e.shutdown()
 			}
 
@@ -128,7 +156,7 @@ func (e *Engine) loop(ctx context.Context, eventCh <-chan interfaces.ChangeEvent
 			// Flush if buffer reaches batch_size.
 			if bufLen >= e.cfg.Replication.BatchSize {
 				if err := e.flush(context.Background()); err != nil {
-					log.Printf("error flushing batch: %v", err)
+					e.logger.Error("error flushing batch", zap.Error(err))
 				}
 			}
 
@@ -140,7 +168,7 @@ func (e *Engine) loop(ctx context.Context, eventCh <-chan interfaces.ChangeEvent
 
 			if bufLen > 0 {
 				if err := e.flush(context.Background()); err != nil {
-					log.Printf("error flushing batch on interval: %v", err)
+					e.logger.Error("error flushing batch on interval", zap.Error(err))
 				}
 			}
 		}
@@ -160,15 +188,55 @@ func (e *Engine) flush(ctx context.Context) error {
 	e.buffer = e.buffer[:0]
 	e.mu.Unlock()
 
-	// Publish batch to cloud.
-	if err := e.publisher.Publish(ctx, batch); err != nil {
+	flushStart := time.Now()
+
+	// Check circuit breaker before attempting to publish.
+	if !e.cloudBreaker.Allow() {
+		// Circuit is open — queue events back for later retry.
+		e.mu.Lock()
+		e.buffer = append(batch, e.buffer...)
+		e.mu.Unlock()
+		e.logger.Warn("circuit breaker open: queuing events for later retry",
+			zap.Int("event_count", len(batch)),
+			zap.String("circuit_state", e.cloudBreaker.State().String()),
+		)
+		return fmt.Errorf("circuit breaker open: cloud database unavailable")
+	}
+
+	// Publish batch to cloud with retry and backoff.
+	publishBackoff := retry.BackoffConfig{
+		InitialDelay: 1 * time.Second,
+		MaxDelay:     8 * time.Second,
+		Multiplier:   2.0,
+	}
+	publishErr := retry.Do(ctx, publishBackoff, 3, func(attempt int, retryErr error, nextDelay time.Duration) {
+		e.logger.Warn("publish attempt failed, retrying",
+			zap.Int("attempt", attempt+1),
+			zap.Error(retryErr),
+			zap.Duration("next_delay", nextDelay),
+		)
+	}, func(retryCtx context.Context) error {
+		return e.publisher.Publish(retryCtx, batch)
+	})
+	if publishErr != nil {
+		e.cloudBreaker.RecordFailure()
 		// On failure, put events back into the buffer for retry.
 		e.mu.Lock()
 		e.buffer = append(batch, e.buffer...)
 		e.state.EventsFailed += int64(len(batch))
 		e.mu.Unlock()
-		return fmt.Errorf("publishing batch of %d events: %w", len(batch), err)
+		if e.metrics != nil {
+			e.metrics.EventsFailed.Add(float64(len(batch)))
+			e.metrics.DBConnectionErrors.Inc()
+		}
+		e.logger.Error("publishing batch failed",
+			zap.Int("event_count", len(batch)),
+			zap.Int("consecutive_failures", e.cloudBreaker.ConsecutiveFailures()),
+			zap.Error(publishErr),
+		)
+		return fmt.Errorf("publishing batch of %d events: %w", len(batch), publishErr)
 	}
+	e.cloudBreaker.RecordSuccess()
 
 	// Determine the highest LSN in the batch.
 	var maxLSN interfaces.LSN
@@ -185,7 +253,10 @@ func (e *Engine) flush(ctx context.Context) error {
 	// Acknowledge the LSN so PostgreSQL can advance the replication slot.
 	if maxLSN > 0 {
 		if err := e.subscriber.Acknowledge(ctx, maxLSN); err != nil {
-			log.Printf("warning: failed to acknowledge LSN %d: %v", maxLSN, err)
+			e.logger.Warn("failed to acknowledge LSN",
+				zap.Uint64("lsn", uint64(maxLSN)),
+				zap.Error(err),
+			)
 			// Non-fatal: events were published; LSN will be re-acked next time.
 		}
 	}
@@ -203,12 +274,24 @@ func (e *Engine) flush(ctx context.Context) error {
 	stateSnapshot := *e.state
 	e.mu.Unlock()
 
-	log.Printf("flushed %d events: lsn=%d lag=%s total_processed=%d",
-		len(batch), maxLSN, stateSnapshot.CurrentLag.Round(time.Millisecond), stateSnapshot.EventsProcessed)
+	// Record Prometheus metrics.
+	if e.metrics != nil {
+		e.metrics.EventsProcessed.Add(float64(len(batch)))
+		e.metrics.BatchSize.Observe(float64(len(batch)))
+		e.metrics.FlushDuration.Observe(time.Since(flushStart).Seconds())
+		e.metrics.ReplicationLag.Set(stateSnapshot.CurrentLag.Seconds())
+	}
+
+	e.logger.Info("flushed events",
+		zap.Int("batch_size", len(batch)),
+		zap.Uint64("lsn", uint64(maxLSN)),
+		zap.Duration("lag", stateSnapshot.CurrentLag.Round(time.Millisecond)),
+		zap.Int64("total_processed", stateSnapshot.EventsProcessed),
+	)
 
 	// Persist state to disk.
 	if err := e.stateStore.Save(&stateSnapshot); err != nil {
-		log.Printf("warning: failed to persist replication state: %v", err)
+		e.logger.Warn("failed to persist replication state", zap.Error(err))
 		// Non-fatal: state will be retried on next flush.
 	}
 
@@ -222,7 +305,7 @@ func (e *Engine) flush(ctx context.Context) error {
 //
 // It enforces a 30-second timeout and logs a warning if exceeded.
 func (e *Engine) shutdown() error {
-	log.Println("shutting down replication engine...")
+	e.logger.Info("shutting down replication engine")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
@@ -235,13 +318,13 @@ func (e *Engine) shutdown() error {
 	select {
 	case err := <-done:
 		if err != nil {
-			log.Printf("shutdown completed with errors: %v", err)
+			e.logger.Error("shutdown completed with errors", zap.Error(err))
 		} else {
-			log.Println("shutdown complete")
+			e.logger.Info("shutdown complete")
 		}
 		return err
 	case <-shutdownCtx.Done():
-		log.Println("WARNING: graceful shutdown exceeded 30 second timeout")
+		e.logger.Warn("graceful shutdown exceeded timeout", zap.Duration("timeout", shutdownTimeout))
 		return fmt.Errorf("shutdown timed out after %s", shutdownTimeout)
 	}
 }
@@ -251,7 +334,7 @@ func (e *Engine) shutdownWork(ctx context.Context) error {
 
 	// Step 1: Flush remaining buffered events.
 	if err := e.flush(ctx); err != nil {
-		log.Printf("error flushing during shutdown: %v", err)
+		e.logger.Error("error flushing during shutdown", zap.Error(err))
 		shutdownErr = err
 	}
 
@@ -261,7 +344,7 @@ func (e *Engine) shutdownWork(ctx context.Context) error {
 	e.mu.Unlock()
 
 	if err := e.stateStore.Save(&stateSnapshot); err != nil {
-		log.Printf("error persisting state during shutdown: %v", err)
+		e.logger.Error("error persisting state during shutdown", zap.Error(err))
 		if shutdownErr == nil {
 			shutdownErr = err
 		}
@@ -269,7 +352,7 @@ func (e *Engine) shutdownWork(ctx context.Context) error {
 
 	// Step 3: Close subscriber.
 	if err := e.subscriber.Close(); err != nil {
-		log.Printf("error closing subscriber during shutdown: %v", err)
+		e.logger.Error("error closing subscriber during shutdown", zap.Error(err))
 		if shutdownErr == nil {
 			shutdownErr = err
 		}
