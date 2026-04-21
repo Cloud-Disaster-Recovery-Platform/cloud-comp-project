@@ -28,31 +28,98 @@ The system defines four core interfaces:
 3. **DistributedLock**: Coordinates active writer designation
 4. **StateCoordinator**: Manages database read-only transitions
 
+## Prerequisites
+
+- Go 1.21+
+- PostgreSQL 14+ (Local & Cloud)
+- GCS bucket (for distributed locks)
+- `cloudflared` (optional, for secure tunneling)
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   go mod download
+   ```
+3. Build the binary:
+   ```bash
+   make build
+   ```
+
+## Local PostgreSQL Setup
+
+### 1. Enable Logical Replication
+
+The local PostgreSQL instance must have logical replication enabled. Edit your `postgresql.conf`:
+
+```conf
+wal_level = logical
+max_replication_slots = 5
+max_wal_senders = 5
+```
+
+Restart PostgreSQL after making these changes.
+
+### 2. User Permissions
+
+The replication user requires specific permissions to manage slots and publications.
+
+```sql
+-- Create a dedicated replication user
+CREATE USER replicator WITH REPLICATION PASSWORD 'your_password';
+
+-- Grant access to the application database
+GRANT CONNECT ON DATABASE myapp TO replicator;
+
+-- Grant permissions on tables to be replicated
+GRANT USAGE ON SCHEMA public TO replicator;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO replicator;
+
+-- (Optional) If you want the engine to create publications automatically:
+ALTER USER replicator SET default_transaction_read_only = off;
+-- Grant OWNERSHIP or enough privilege to CREATE PUBLICATION
+```
+
+### 3. Manual Replication Slot (Optional)
+
+The engine will attempt to create the slot automatically if it doesn't exist, but you can create it manually:
+
+```sql
+SELECT pg_create_logical_replication_slot('failsafe_slot', 'pgoutput');
+```
+
 ## Configuration
 
-Configuration is loaded from `config.yaml` and can be overridden with environment variables. See `config.example.yaml` for a complete example.
+Configuration is loaded from `config.yaml` and can be overridden with environment variables. 
 
-## Building
-
-```bash
-go build -o state-sync ./cmd/state-sync
-```
+1. Copy the example config:
+   ```bash
+   cp config.example.yaml config.yaml
+   ```
+2. Update the values in `config.yaml` to match your environment.
+3. Use environment variables for secrets (prefixed with `STATE_SYNC_`):
+   ```bash
+   export STATE_SYNC_LOCAL_DATABASE_PASSWORD=your_local_pass
+   export STATE_SYNC_CLOUD_DATABASE_PASSWORD=your_cloud_pass
+   ```
 
 ## Running
 
 ```bash
-./state-sync -config config.yaml
+./bin/state-sync-engine -config config.yaml
 ```
 
-## Dependencies
+## Docker setup
 
-- `github.com/jackc/pgx/v5` - PostgreSQL driver with logical replication support
-- `go.uber.org/zap` - Structured logging
-- `github.com/spf13/viper` - Configuration management
-- `github.com/prometheus/client_golang` - Metrics collection
-- `cloud.google.com/go/storage` - GCS for distributed locks
+A multi-stage `Dockerfile` is provided for containerized deployments.
 
-## Credential management and security
+```bash
+make docker-build
+docker run -v $(pwd)/config.yaml:/app/config.yaml cloud-mirror/state-sync-engine
+```
+
+## Core Interfaces
 
 ### Environment variables for secrets
 
