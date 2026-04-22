@@ -4,23 +4,20 @@ This runbook provides procedures for monitoring, troubleshooting, and managing t
 
 ## System Monitoring
 
-### 1. Key Metrics
+### 1. Status Endpoint
 
-Monitor the following Prometheus metrics (exposed by the State Sync Engine on port 9090):
-
-- `state_sync_replication_lag_seconds`: High lag (> 60s) indicates replication bottlenecks or connectivity issues.
-- `state_sync_events_failed_total`: Non-zero values indicate errors in publishing to the cloud database.
-- `state_sync_active_node`: 0 = Local active, 1 = Cloud active. Monitor for unexpected transitions.
-- `state_sync_lock_held`: 1 = Current instance holds the writer lock.
-
-### 2. Status Endpoint
-
-Check the JSON status endpoint for a high-level overview:
+Check the system status via the status endpoint (default port 8080):
 ```bash
 curl http://localhost:8080/status
 ```
 
-### 3. Log Analysis
+Key indicators to watch:
+- `active_node`: Indicates if the system is in "local" or "cloud" mode.
+- `replication_lag`: Time difference between local and cloud data.
+- `events_processed`: Total number of records synced.
+- `lock_holder`: Which node currently holds the distributed writer lock.
+
+### 2. Log Analysis
 
 The State Sync Engine logs in JSON format. Key messages to search for:
 - `Failover detected`: Transition to cloud active.
@@ -45,7 +42,7 @@ The State Sync Engine logs in JSON format. Key messages to search for:
 
 ### Split-Brain Condition
 
-If `state_sync_split_brain_events_total` increases:
+If split-brain conditions are detected in the logs:
 1. **AUTHORITATIVE ACTION**: The Cloud Backup Node is considered authoritative.
 2. **Read-Only Local**: Manually set the local database to read-only:
    ```sql
@@ -66,7 +63,7 @@ To force traffic to the cloud:
 
 1. Ensure the local application is healthy.
 2. The State Sync Engine should automatically detect recovery and sync changes back.
-3. **Verification**: Confirm `state_sync_replication_lag_seconds` is near zero before releasing the lock.
+3. **Verification**: Confirm replication lag is near zero before releasing the lock.
 4. Release the lock if stuck: Delete the `active-writer` object in the GCS lock bucket.
 
 ### Database Maintenance

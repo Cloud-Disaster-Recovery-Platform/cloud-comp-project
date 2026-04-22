@@ -164,7 +164,7 @@ The developer's existing local application and PostgreSQL database are out of sc
 
 1. THE State_Sync_Engine SHALL emit structured logs in JSON format
 2. THE State_Sync_Engine SHALL log all state transitions (active node changes, failover events, replication status)
-3. THE State_Sync_Engine SHALL expose Prometheus-compatible metrics endpoint
+3. THE State_Sync_Engine SHALL expose a JSON status endpoint for health monitoring
 4. THE State_Sync_Engine SHALL track metrics for: replication lag, replication throughput, active node status, database connection pool stats, failover events
 5. THE State_Sync_Engine SHALL provide a status endpoint that returns current system state in JSON format
 6. THE Failsafe_Infrastructure SHALL integrate with GCP Cloud Monitoring for cloud-side observability

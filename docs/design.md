@@ -117,9 +117,9 @@ graph TB
 **Technology Stack**
 - Language: Go 1.21+
 - PostgreSQL Driver: `github.com/jackc/pgx/v5` (native logical replication support)
-- Metrics: Prometheus client library
-- Logging: `go.uber.org/zap` (structured JSON logging)
-- Configuration: `github.com/spf13/viper` (env vars + YAML/JSON)
+- Logging: go.uber.org/zap (structured JSON logging)
+- Configuration: github.com/spf13/viper (env vars + YAML/JSON)
+
 
 **Core Interfaces**
 

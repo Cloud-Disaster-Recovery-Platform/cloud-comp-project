@@ -17,7 +17,7 @@ Cloud Mirror is designed to be language-agnostic and non-invasive—it works wit
 - **Data Consistency**: Asynchronous logical replication ensures eventual consistency with configurable lag thresholds
 - **Split-Brain Prevention**: Distributed lock mechanism prevents conflicting writes during failover
 - **Non-Invasive**: Works with existing applications without code modifications
-- **Observable**: Structured logging, Prometheus metrics, and status endpoints for monitoring
+- **Observable**: Structured logging and status endpoints for monitoring
 - **Resilient**: Exponential backoff, circuit breaker, and graceful degradation for error recovery
 
 ## Architecture
@@ -48,7 +48,6 @@ Cloud Mirror is designed to be language-agnostic and non-invasive—it works wit
 ### State Sync Engine
 - **Language**: Go 1.21+
 - **PostgreSQL Driver**: pgx/v5 (native logical replication support)
-- **Metrics**: Prometheus client library
 - **Logging**: go.uber.org/zap (structured JSON logging)
 - **Configuration**: github.com/spf13/viper (env vars + YAML/JSON)
 
@@ -98,7 +97,7 @@ Cloud Mirror is designed to be language-agnostic and non-invasive—it works wit
 4. **Build and run State Sync Engine**
    ```bash
    cd state-sync-engine
-   go build -o state-sync
+   go build -o state-sync ./cmd/state-sync
    ./state-sync -config config.yaml
    ```
 
@@ -132,8 +131,7 @@ cloud_database:
 
 replication:
   tables:
-    - public.users
-    - public.orders
+    - public.tasks
   batch_size: 100
   flush_interval: 1s
   max_lag_seconds: 30
@@ -146,7 +144,6 @@ distributed_lock:
 
 health:
   status_port: 8080
-  metrics_port: 9090
   check_interval: 10s
 
 failover:
@@ -154,18 +151,7 @@ failover:
   consecutive_failures: 3
 ```
 
-## Monitoring
-
-### Metrics Endpoint
-Access Prometheus metrics at `http://localhost:9090/metrics`:
-- `state_sync_replication_lag_seconds` - Current replication lag
-- `state_sync_events_processed_total` - Total change events processed
-- `state_sync_events_failed_total` - Failed replication attempts
-- `state_sync_active_node` - Current active node (0=local, 1=cloud)
-- `state_sync_failover_events_total` - Number of failover events
-- `state_sync_split_brain_events_total` - Split-brain condition detections
-
-### Status Endpoint
+## Status Endpoint
 Check system health at `http://localhost:8080/status`:
 ```json
 {

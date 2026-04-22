@@ -9,7 +9,7 @@ This implementation plan creates a headless failsafe infrastructure that provide
 - [x] 1. Project setup and core interfaces
   - Create Go module structure with proper directory layout
   - Define core interfaces: ReplicationSubscriber, ReplicationPublisher, DistributedLock, StateCoordinator
-  - Set up dependency management (go.mod) with required libraries: pgx/v5, zap, viper, prometheus client
+  - Set up dependency management (go.mod) with required libraries: pgx/v5, zap, viper
   - Create configuration schema structs matching design specification
   - _Requirements: 10.1, 10.2, 10.5_
 
@@ -218,13 +218,10 @@ This implementation plan creates a headless failsafe infrastructure that provide
     - Test log levels and message content
     - _Requirements: 11.1, 11.2_
 
-- [x] 13. Observability: Prometheus metrics
-  - [x] 13.1 Implement Prometheus metrics endpoint
-    - Expose /metrics endpoint on configured metrics_port
-    - Implement all metrics from design: replication_lag_seconds, events_processed_total, events_failed_total, batch_size, flush_duration_seconds
-    - Implement connection metrics: db_connections_active, db_connection_errors_total
-    - Implement failover metrics: active_node, failover_events_total, split_brain_events_total
-    - Implement lock metrics: lock_held, lock_acquire_duration_seconds
+- [x] 13. Observability: System monitoring
+  - [x] 13.1 Implement JSON status endpoint
+    - Expose /status endpoint on configured status_port
+    - Implement status fields: replication_lag, active_node, lock_holder, events_processed
     - _Requirements: 11.3, 11.4_
   
   - [x] 13.2 Update replication engine to record metrics
